@@ -14,7 +14,7 @@ spec:
   source:
     type: Git
     git:
-      uri: 'https://github.com/dungpv30/zeus-nexus.git'
+      uri: 'https://github.com/vicktorf/zeus-nexus.git'
       ref: main
     contextDir: docker
   strategy:

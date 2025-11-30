@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-frontend
+  namespace: ac-agentic
+  labels:
+    app: zeus-frontend
+    component: web-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: zeus-frontend
+  template:
+    metadata:
+      labels:
+        app: zeus-frontend
+        component: web-ui
+    spec:
+      serviceAccountName: zeus-service-account
+      containers:
+      - name: streamlit
+        image: image-registry.openshift-image-registry.svc:5000/ac-agentic/zeus-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8501
+          name: http
+          protocol: TCP
+        env:
+        - name: ZEUS_API_URL
+          value: "https://zeus-ac-agentic.apps.prod01.fis-cloud.fpt.com"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-frontend
+  namespace: ac-agentic
+  labels:
+    app: zeus-frontend
+spec:
+  selector:
+    app: zeus-frontend
+  ports:
+  - name: http
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: zeus-frontend
+  namespace: ac-agentic
+  labels:
+    app: zeus-frontend
+spec:
+  host: zeus-ui-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: zeus-frontend
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

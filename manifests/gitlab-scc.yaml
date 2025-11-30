@@ -1,0 +1,49 @@
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: gitlab-scc
+  annotations:
+    kubernetes.io/description: 'GitLab CE requires specific user ID and group ID'
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false  
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities:
+- CHOWN
+- DAC_OVERRIDE
+- FOWNER
+- SETGID
+- SETUID
+allowedUnsafeSysctls: []
+defaultAddCapabilities:
+- CHOWN
+- DAC_OVERRIDE
+- FOWNER
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 998
+    max: 998
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+- KILL
+- MKNOD
+runAsUser:
+  type: MustRunAs
+  uid: 998
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:ac-agentic:zeus-service-account
+- system:serviceaccount:ac-agentic:default
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret

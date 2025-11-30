@@ -1,0 +1,296 @@
+# Build Configuration for Zeus Nexus Enhanced Architecture
+# Using Source-to-Image (S2I) builds in OpenShift
+
+---
+# Zeus Master Agent BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: zeus-master-build
+  namespace: ac-agentic
+  labels:
+    app: zeus-master
+    layer: orchestrator
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: orchestrator
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-master:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-master
+  namespace: ac-agentic
+  labels:
+    app: zeus-master
+
+---
+# Athena Agent BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: athena-build
+  namespace: ac-agentic
+  labels:
+    app: athena
+    layer: satellite-agents
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: agents/athena
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: athena:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: athena
+  namespace: ac-agentic
+  labels:
+    app: athena
+
+---
+# Hephaestus Agent BuildConfig  
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: hephaestus-build
+  namespace: ac-agentic
+  labels:
+    app: hephaestus
+    layer: satellite-agents
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: agents/hephaestus
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: hephaestus:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: hephaestus
+  namespace: ac-agentic
+  labels:
+    app: hephaestus
+
+---
+# Apollo Agent BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: apollo-build
+  namespace: ac-agentic
+  labels:
+    app: apollo
+    layer: satellite-agents
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: agents/apollo
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: apollo:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: apollo
+  namespace: ac-agentic
+  labels:
+    app: apollo
+
+---
+# LLM Pool BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: llm-pool-build
+  namespace: ac-agentic
+  labels:
+    app: llm-pool
+    layer: llm-pool
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: llm-pool
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: llm-pool:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: llm-pool
+  namespace: ac-agentic
+  labels:
+    app: llm-pool
+
+---
+# Jira Service BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: jira-service-build
+  namespace: ac-agentic
+  labels:
+    app: jira-service
+    layer: toolhub-services
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: toolhub/services
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: jira.Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: jira-service:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: jira-service
+  namespace: ac-agentic
+  labels:
+    app: jira-service
+
+---
+# OpenShift Service BuildConfig
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: openshift-service-build
+  namespace: ac-agentic
+  labels:
+    app: openshift-service
+    layer: toolhub-services
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+      ref: main
+    contextDir: toolhub/services
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: openshift.Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: openshift-service:latest
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: zeus-build-secret
+  - type: ImageChange
+    imageChange: {}
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: openshift-service
+  namespace: ac-agentic
+  labels:
+    app: openshift-service

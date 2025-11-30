@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ac-agentic
+
+resources:
+# Configurations
+- config/namespace-rbac.yaml
+- config/zeus-config.yaml  
+- config/secrets.yaml
+
+# Infrastructure
+- manifests/infrastructure/redis.yaml
+- manifests/infrastructure/postgresql.yaml
+- manifests/infrastructure/minio.yaml
+
+# Zeus Core
+- manifests/zeus-core/deployment.yaml
+
+commonLabels:
+  app: zeus-nexus
+  version: v1.0
+  managed-by: argocd
+
+images:
+- name: python
+  newTag: 3.11-slim
+- name: redis  
+  newTag: 7.2-alpine
+- name: postgres
+  newTag: 15-alpine
+- name: minio/minio
+  newTag: RELEASE.2024-01-16T16-07-38Z
+
+patchesStrategicMerge:
+- patches/resource-limits.yaml
+
+configMapGenerator:
+- name: deployment-info
+  literals:
+  - deployment.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  - deployment.version=v1.0
+  - deployment.namespace=ac-agentic

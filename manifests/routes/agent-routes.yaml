@@ -1,0 +1,146 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: athena
+  namespace: ac-agentic
+  labels:
+    app: athena
+    component: agent
+    agent-type: project-management
+spec:
+  host: athena-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: athena
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ares
+  namespace: ac-agentic
+  labels:
+    app: ares
+    component: agent
+    agent-type: devops-monitoring
+spec:
+  host: ares-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: ares
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hermes
+  namespace: ac-agentic
+  labels:
+    app: hermes
+    component: agent
+    agent-type: account-management
+spec:
+  host: hermes-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: hermes
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hephaestus
+  namespace: ac-agentic
+  labels:
+    app: hephaestus
+    component: agent
+    agent-type: cloud-architect
+spec:
+  host: hephaestus-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: hephaestus
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: apollo
+  namespace: ac-agentic
+  labels:
+    app: apollo
+    component: agent
+    agent-type: sales-analytics
+spec:
+  host: apollo-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: apollo
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mnemosyne
+  namespace: ac-agentic
+  labels:
+    app: mnemosyne
+    component: agent
+    agent-type: learning-knowledge
+spec:
+  host: mnemosyne-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: mnemosyne
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: clio
+  namespace: ac-agentic
+  labels:
+    app: clio
+    component: agent
+    agent-type: documentation
+spec:
+  host: clio-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: clio
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

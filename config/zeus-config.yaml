@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zeus-config
+  namespace: ac-agentic
+  labels:
+    app: zeus-nexus
+    component: config
+data:
+  # Zeus Core Configuration
+  ZEUS_API_VERSION: "v1.0"
+  ZEUS_LOG_LEVEL: "INFO"
+  ZEUS_MAX_WORKERS: "4"
+  ZEUS_TIMEOUT: "30"
+  
+  # LLM Configuration
+  LLM_PROVIDER: "openai"
+  LLM_MODEL: "gpt-4"
+  LLM_MAX_TOKENS: "4096"
+  LLM_TEMPERATURE: "0.7"
+  
+  # Database URLs
+  REDIS_URL: "redis://redis.ac-agentic.svc.cluster.local:6379"
+  POSTGRES_URL: "postgresql://zeus:zeus123@postgresql.ac-agentic.svc.cluster.local:5432/zeus"
+  MINIO_ENDPOINT: "minio.ac-agentic.svc.cluster.local:9000"
+  
+  # n8n Configuration
+  N8N_WEBHOOK_BASE: "https://n8n-ac-agentic.apps.prod01.fis-cloud.fpt.com/webhook"
+  N8N_API_BASE: "http://n8n.ac-agentic.svc.cluster.local:5678"
+  
+  # Agent Endpoints
+  AGENT_ATHENA_URL: "http://athena.ac-agentic.svc.cluster.local:8001"
+  AGENT_ARES_URL: "http://ares.ac-agentic.svc.cluster.local:8002"
+  AGENT_HERMES_URL: "http://hermes.ac-agentic.svc.cluster.local:8003"
+  AGENT_HEPHAESTUS_URL: "http://hephaestus.ac-agentic.svc.cluster.local:8004"
+  AGENT_APOLLO_URL: "http://apollo.ac-agentic.svc.cluster.local:8005"
+  AGENT_MNEMOSYNE_URL: "http://mnemosyne.ac-agentic.svc.cluster.local:8006"
+  AGENT_CLIO_URL: "http://clio.ac-agentic.svc.cluster.local:8007"
+  
+  # External Service Integrations
+  JIRA_BASE_URL: "https://fptis.atlassian.net"
+  CONFLUENCE_BASE_URL: "https://fptis.atlassian.net/wiki"
+  GRAFANA_URL: "https://grafana.fiscloud.vn"
+  NOTION_API_URL: "https://api.notion.com/v1"
+  
+  # Monitoring & Alerting
+  PROMETHEUS_URL: "http://prometheus.ac-agentic.svc.cluster.local:9090"
+  ALERTMANAGER_URL: "http://alertmanager.ac-agentic.svc.cluster.local:9093"
+  TELEGRAM_BOT_API: "https://api.telegram.org/bot"
+  
+  # Security & Auth
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "1440"
+  OAUTH2_CALLBACK_URL: "https://zeus-ac-agentic.apps.prod01.fis-cloud.fpt.com/auth/callback"
+  
+  # Performance & Scaling
+  AGENT_MAX_CONCURRENT_REQUESTS: "10"
+  AGENT_TIMEOUT: "60"
+  CACHE_TTL: "3600"
+  RATE_LIMIT_PER_MINUTE: "100"

@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zeus-nexus
+  labels:
+    name: zeus-nexus
+    app: zeus-nexus
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zeus-config
+  namespace: zeus-nexus
+data:
+  # Database Configuration
+  POSTGRES_HOST: "postgresql"
+  POSTGRES_PORT: "5432" 
+  POSTGRES_DB: "zeus_nexus"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  
+  # Vector Database Configuration
+  QDRANT_HOST: "qdrant"
+  QDRANT_PORT: "6333"
+  
+  # MinIO Configuration
+  MINIO_HOST: "minio"
+  MINIO_PORT: "9000"
+  
+  # API Configuration
+  ORCHESTRATOR_HOST: "zeus-orchestrator"
+  ORCHESTRATOR_PORT: "8000"
+  
+  # Agent Configuration
+  ATHENA_HOST: "zeus-athena"
+  ATHENA_PORT: "8001"
+  APOLLO_HOST: "zeus-apollo"  
+  APOLLO_PORT: "8002"
+  HEPHAESTUS_HOST: "zeus-hephaestus"
+  HEPHAESTUS_PORT: "8003"
+  
+  # LLM Pool Configuration
+  LLM_POOL_HOST: "zeus-llm-pool"
+  LLM_POOL_PORT: "8004"
+  
+  # ToolHub Configuration
+  TOOLHUB_JIRA_HOST: "zeus-toolhub-jira"
+  TOOLHUB_JIRA_PORT: "8005"
+  TOOLHUB_OPENSHIFT_HOST: "zeus-toolhub-openshift"
+  TOOLHUB_OPENSHIFT_PORT: "8006"
+  
+  # Context Storage Configuration
+  CONTEXT_STORAGE_HOST: "zeus-context-storage"
+  CONTEXT_STORAGE_PORT: "8007"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: zeus-secrets
+  namespace: zeus-nexus
+type: Opaque
+data:
+  # Database credentials (base64 encoded)
+  POSTGRES_USER: cG9zdGdyZXM=  # postgres
+  POSTGRES_PASSWORD: emV1c25leHVzMTIz  # zeusnexus123
+  
+  # Redis password (base64 encoded)  
+  REDIS_PASSWORD: emV1c25leHVzMTIz  # zeusnexus123
+  
+  # MinIO credentials (base64 encoded)
+  MINIO_ACCESS_KEY: emV1c25leHVz  # zeusnexus
+  MINIO_SECRET_KEY: emV1c25leHVzMTIzNDU2  # zeusnexus123456
+  
+  # LLM API Keys (base64 encoded)
+  OPENAI_API_KEY: ""  # Add your OpenAI API key here
+  ANTHROPIC_API_KEY: ""  # Add your Anthropic API key here
+  
+  # JIRA Integration (base64 encoded)
+  JIRA_URL: ""  # Add your JIRA URL here
+  JIRA_USERNAME: ""  # Add your JIRA username here
+  JIRA_API_TOKEN: ""  # Add your JIRA API token here
+  
+  # OpenShift Integration (base64 encoded)
+  OPENSHIFT_API_URL: ""  # Add your OpenShift API URL here
+  OPENSHIFT_TOKEN: ""  # Add your OpenShift token here
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zeus-nexus-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["route.openshift.io"]
+  resources: ["routes"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zeus-nexus
+  namespace: zeus-nexus
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zeus-nexus-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zeus-nexus-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: zeus-nexus
+  namespace: zeus-nexus

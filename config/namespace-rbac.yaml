@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ac-agentic
+  labels:
+    name: ac-agentic
+    app: zeus-nexus
+    environment: production
+  annotations:
+    openshift.io/description: "Zeus Nexus AI Pantheon-as-a-Service"
+    openshift.io/display-name: "AC Agentic AI Platform"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zeus-service-account
+  namespace: ac-agentic
+  labels:
+    app: zeus-nexus
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zeus-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["route.openshift.io"]
+  resources: ["routes"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors", "prometheusrules"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zeus-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zeus-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: zeus-service-account
+  namespace: ac-agentic
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zeus-role
+  namespace: ac-agentic
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["route.openshift.io"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zeus-role-binding
+  namespace: ac-agentic
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zeus-role
+subjects:
+- kind: ServiceAccount
+  name: zeus-service-account
+  namespace: ac-agentic

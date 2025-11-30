@@ -1,0 +1,186 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: ac-agentic
+  labels:
+    app: postgresql
+    component: database
+    part-of: zeus-nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        component: database
+    spec:
+      serviceAccountName: zeus-service-account
+      containers:
+      - name: postgresql
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-init
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      - name: postgres-init
+        configMap:
+          name: postgres-init-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: ac-agentic
+  labels:
+    app: postgresql
+    component: database
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  selector:
+    app: postgresql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: ac-agentic
+  labels:
+    app: postgresql
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ac-bronze-single
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  namespace: ac-agentic
+data:
+  init-zeus.sql: |
+    -- Create Zeus Nexus database schema
+    
+    -- Agents table
+    CREATE TABLE IF NOT EXISTS agents (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        status VARCHAR(20) DEFAULT 'inactive',
+        endpoint VARCHAR(255),
+        last_health_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        capabilities JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Conversations table
+    CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        session_id UUID UNIQUE NOT NULL,
+        user_id VARCHAR(100),
+        agent_name VARCHAR(50),
+        message TEXT,
+        response TEXT,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Tasks table  
+    CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        task_id UUID UNIQUE NOT NULL,
+        agent_name VARCHAR(50),
+        task_type VARCHAR(50),
+        status VARCHAR(20) DEFAULT 'pending',
+        input_data JSONB,
+        output_data JSONB,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP
+    );
+    
+    -- Metrics table
+    CREATE TABLE IF NOT EXISTS metrics (
+        id SERIAL PRIMARY KEY,
+        metric_name VARCHAR(100),
+        metric_value FLOAT,
+        labels JSONB,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Insert default agents
+    INSERT INTO agents (name, status, endpoint, capabilities) VALUES
+    ('athena', 'active', 'http://athena.ac-agentic.svc.cluster.local:8001', '["project_management", "jira", "confluence"]'),
+    ('ares', 'active', 'http://ares.ac-agentic.svc.cluster.local:8002', '["monitoring", "grafana", "incident_response"]'),
+    ('hermes', 'active', 'http://hermes.ac-agentic.svc.cluster.local:8003', '["crm", "notion", "communication"]'),
+    ('hephaestus', 'active', 'http://hephaestus.ac-agentic.svc.cluster.local:8004', '["cloud", "terraform", "openshift"]'),
+    ('apollo', 'active', 'http://apollo.ac-agentic.svc.cluster.local:8005', '["sales", "analytics", "forecasting"]'),
+    ('mnemosyne', 'active', 'http://mnemosyne.ac-agentic.svc.cluster.local:8006', '["learning", "vector_search", "knowledge_base"]'),
+    ('clio', 'active', 'http://clio.ac-agentic.svc.cluster.local:8007', '["documentation", "reporting", "pdf_generation"]')
+    ON CONFLICT (name) DO NOTHING;
+    
+    -- Create indexes
+    CREATE INDEX IF NOT EXISTS idx_conversations_session_id ON conversations(session_id);
+    CREATE INDEX IF NOT EXISTS idx_conversations_agent_name ON conversations(agent_name);
+    CREATE INDEX IF NOT EXISTS idx_tasks_task_id ON tasks(task_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_agent_name ON tasks(agent_name);
+    CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(metric_name);

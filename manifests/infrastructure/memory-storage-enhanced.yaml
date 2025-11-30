@@ -1,0 +1,250 @@
+# Enhanced Memory & Storage Layer Configuration
+# Redis, PostgreSQL, VectorDB, MinIO for shared memory and storage
+
+---
+# Redis Deployment for Caching and Session Management
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ac-agentic
+  labels:
+    app: redis
+    layer: memory-storage
+    component: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        layer: memory-storage
+        component: cache
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        command:
+          - redis-server
+          - /etc/redis/redis.conf
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ac-agentic
+  labels:
+    app: redis
+    layer: memory-storage
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  type: ClusterIP
+
+---
+# Redis Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: ac-agentic
+data:
+  redis.conf: |
+    # Redis configuration for Zeus Nexus
+    bind 0.0.0.0
+    port 6379
+    
+    # Memory management
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Security
+    requirepass redis_password_123
+    
+    # Logging
+    loglevel notice
+    logfile ""
+
+---
+# Redis PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: ac-agentic
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp2
+
+---
+# VectorDB (Qdrant) for Embeddings and Context Storage
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vectordb
+  namespace: ac-agentic
+  labels:
+    app: vectordb
+    layer: memory-storage
+    component: vector-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vectordb
+  template:
+    metadata:
+      labels:
+        app: vectordb
+        layer: memory-storage
+        component: vector-database
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:v1.7.0
+        ports:
+        - containerPort: 6333
+          name: rest-api
+        - containerPort: 6334
+          name: grpc-api
+        volumeMounts:
+        - name: qdrant-storage
+          mountPath: /qdrant/storage
+        - name: qdrant-config
+          mountPath: /qdrant/config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        env:
+        - name: QDRANT__SERVICE__HTTP_PORT
+          value: "6333"
+        - name: QDRANT__SERVICE__GRPC_PORT
+          value: "6334"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6333
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 6333
+          initialDelaySeconds: 5
+      volumes:
+      - name: qdrant-storage
+        persistentVolumeClaim:
+          claimName: vectordb-pvc
+      - name: qdrant-config
+        configMap:
+          name: qdrant-config
+
+---
+# VectorDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vectordb
+  namespace: ac-agentic
+  labels:
+    app: vectordb
+    layer: memory-storage
+spec:
+  selector:
+    app: vectordb
+  ports:
+  - port: 6333
+    targetPort: 6333
+    name: rest-api
+  - port: 6334
+    targetPort: 6334
+    name: grpc-api
+  type: ClusterIP
+
+---
+# VectorDB Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qdrant-config
+  namespace: ac-agentic
+data:
+  config.yaml: |
+    log_level: INFO
+    storage:
+      storage_path: /qdrant/storage
+      snapshots_path: /qdrant/snapshots
+      temp_path: /qdrant/temp
+    service:
+      http_port: 6333
+      grpc_port: 6334
+      enable_cors: true
+    cluster:
+      enabled: false
+
+---
+# VectorDB PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vectordb-pvc
+  namespace: ac-agentic
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp2

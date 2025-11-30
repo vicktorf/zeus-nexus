@@ -1,0 +1,326 @@
+# PostgreSQL Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: postgresql
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: registry.redhat.io/rhel8/postgresql-13:latest
+        env:
+        - name: POSTGRESQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_USER
+        - name: POSTGRESQL_PASSWORD  
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRESQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: POSTGRES_DB
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/pgsql/data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: postgresql-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-pvc
+  namespace: zeus-nexus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: postgresql
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    component: postgresql
+
+---
+# Redis Cache
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: redis
+    spec:
+      containers:
+      - name: redis
+        image: registry.redhat.io/rhel8/redis-6:latest
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: REDIS_PASSWORD
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /var/lib/redis/data
+        resources:
+          requests:
+            memory: "256Mi" 
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: zeus-nexus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: redis
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    component: redis
+
+---
+# Qdrant Vector Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qdrant
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: qdrant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: qdrant
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: qdrant
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:latest
+        ports:
+        - containerPort: 6333
+        - containerPort: 6334
+        volumeMounts:
+        - name: qdrant-data
+          mountPath: /qdrant/storage
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: qdrant-data
+        persistentVolumeClaim:
+          claimName: qdrant-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-pvc
+  namespace: zeus-nexus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: qdrant
+spec:
+  ports:
+  - port: 6333
+    targetPort: 6333
+    name: rest
+  - port: 6334
+    targetPort: 6334
+    name: grpc
+  selector:
+    component: qdrant
+
+---
+# MinIO Object Storage
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: minio
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: minio
+    spec:
+      containers:
+      - name: minio
+        image: quay.io/minio/minio:latest
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: MINIO_SECRET_KEY
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: minio-data
+        persistentVolumeClaim:
+          claimName: minio-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: zeus-nexus
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: minio
+spec:
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: api
+  - port: 9001
+    targetPort: 9001
+    name: console
+  selector:
+    component: minio

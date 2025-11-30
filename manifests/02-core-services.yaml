@@ -1,0 +1,488 @@
+# Zeus Master Agent (Orchestrator)
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: zeus-orchestrator
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: orchestrator
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+    contextDir: orchestrator
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: python:3.11-ubi8
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-orchestrator:latest
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-orchestrator
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: orchestrator
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-orchestrator
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: orchestrator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: orchestrator
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: orchestrator
+    spec:
+      serviceAccountName: zeus-nexus
+      containers:
+      - name: orchestrator
+        image: zeus-orchestrator:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: POSTGRES_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "300m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-orchestrator
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: orchestrator
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+  selector:
+    component: orchestrator
+
+---
+# Athena Agent (PM)
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: zeus-athena
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: athena
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+    contextDir: agents/athena
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: python:3.11-ubi8
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-athena:latest
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-athena
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: athena
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-athena
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: athena
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: athena
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: athena
+    spec:
+      serviceAccountName: zeus-nexus
+      containers:
+      - name: athena
+        image: zeus-athena:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: ORCHESTRATOR_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: ORCHESTRATOR_HOST
+        - name: LLM_POOL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: LLM_POOL_HOST
+        - name: TOOLHUB_JIRA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: TOOLHUB_JIRA_HOST
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-athena
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: athena
+spec:
+  ports:
+  - port: 8001
+    targetPort: 8001
+  selector:
+    component: athena
+
+---
+# Apollo Agent (Consultant)
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: zeus-apollo
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: apollo
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+    contextDir: agents/apollo
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: python:3.11-ubi8
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-apollo:latest
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-apollo
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: apollo
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-apollo
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: apollo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: apollo
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: apollo
+    spec:
+      serviceAccountName: zeus-nexus
+      containers:
+      - name: apollo
+        image: zeus-apollo:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: ORCHESTRATOR_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: ORCHESTRATOR_HOST
+        - name: LLM_POOL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: LLM_POOL_HOST
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8002
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-apollo
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: apollo
+spec:
+  ports:
+  - port: 8002
+    targetPort: 8002
+  selector:
+    component: apollo
+
+---
+# Hephaestus Agent (Cloud Architect)
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: zeus-hephaestus
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: hephaestus
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+    contextDir: agents/hephaestus
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: python:3.11-ubi8
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-hephaestus:latest
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-hephaestus
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: hephaestus
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-hephaestus
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: hephaestus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: hephaestus
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: hephaestus
+    spec:
+      serviceAccountName: zeus-nexus
+      containers:
+      - name: hephaestus
+        image: zeus-hephaestus:latest
+        ports:
+        - containerPort: 8003
+        env:
+        - name: ORCHESTRATOR_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: ORCHESTRATOR_HOST
+        - name: LLM_POOL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: LLM_POOL_HOST
+        - name: TOOLHUB_OPENSHIFT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: zeus-config
+              key: TOOLHUB_OPENSHIFT_HOST
+        - name: OPENSHIFT_API_URL
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: OPENSHIFT_API_URL
+        - name: OPENSHIFT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: zeus-secrets
+              key: OPENSHIFT_TOKEN
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8003
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-hephaestus
+  namespace: zeus-nexus
+  labels:
+    app: zeus-nexus
+    component: hephaestus
+spec:
+  ports:
+  - port: 8003
+    targetPort: 8003
+  selector:
+    component: hephaestus

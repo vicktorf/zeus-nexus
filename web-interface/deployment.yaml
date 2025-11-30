@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  name: zeus-web-interface
+  labels:
+    app: zeus-nexus
+    component: web-interface
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/zeus-nexus.git
+    contextDir: web-interface
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: nodejs:18-ubi8
+  output:
+    to:
+      kind: ImageStreamTag
+      name: zeus-web-interface:latest
+  triggers:
+    - type: GitHub
+      github:
+        secret: github-webhook-secret
+    - type: Generic
+      generic:
+        secret: generic-webhook-secret
+    - type: ConfigChange
+    - type: ImageChange
+
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zeus-web-interface
+  labels:
+    app: zeus-nexus
+    component: web-interface
+spec:
+  lookupPolicy:
+    local: false
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-web-interface
+  labels:
+    app: zeus-nexus
+    component: web-interface
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: zeus-nexus
+      component: web-interface
+  template:
+    metadata:
+      labels:
+        app: zeus-nexus
+        component: web-interface
+    spec:
+      containers:
+        - name: web-interface
+          image: zeus-web-interface:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: REACT_APP_API_BASE_URL
+              value: "http://zeus-orchestrator:8000"
+            - name: REACT_APP_WS_BASE_URL
+              value: "ws://zeus-orchestrator:8000"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-web-interface
+  labels:
+    app: zeus-nexus
+    component: web-interface
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: zeus-nexus
+    component: web-interface
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: zeus-web-interface
+  labels:
+    app: zeus-nexus
+    component: web-interface
+spec:
+  host: zeus.apps.cluster.local
+  to:
+    kind: Service
+    name: zeus-web-interface
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

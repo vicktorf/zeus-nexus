@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-data-pvc
+  namespace: ac-agentic
+  labels:
+    app: gitea
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ac-bronze-single
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: ac-agentic
+  labels:
+    app: gitea
+    component: git-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea
+  template:
+    metadata:
+      labels:
+        app: gitea
+        component: git-server
+    spec:
+      serviceAccountName: zeus-service-account
+      containers:
+        - name: gitea
+          image: gitea/gitea:1.21.1
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 22
+              name: ssh
+          env:
+            - name: GITEA__database__DB_TYPE
+              value: "postgres"
+            - name: GITEA__database__HOST
+              value: "postgresql.ac-agentic.svc.cluster.local:5432"
+            - name: GITEA__database__NAME
+              value: "gitea"
+            - name: GITEA__database__USER
+              value: "zeus"
+            - name: GITEA__database__PASSWD
+              value: "zeus123"
+            - name: GITEA__server__DOMAIN
+              value: "gitea-ac-agentic.apps.prod01.fis-cloud.fpt.com"
+            - name: GITEA__server__SSH_DOMAIN
+              value: "gitea-ac-agentic.apps.prod01.fis-cloud.fpt.com"
+            - name: GITEA__server__ROOT_URL
+              value: "https://gitea-ac-agentic.apps.prod01.fis-cloud.fpt.com/"
+            - name: GITEA__security__INSTALL_LOCK
+              value: "true"
+            - name: GITEA__service__DISABLE_REGISTRATION
+              value: "true"
+            - name: USER_UID
+              value: "1000"
+            - name: USER_GID
+              value: "1000"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: gitea-data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: gitea-data
+          persistentVolumeClaim:
+            claimName: gitea-data-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: ac-agentic
+  labels:
+    app: gitea
+    component: git-server
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+    - port: 22
+      targetPort: 22
+      protocol: TCP
+      name: ssh
+  selector:
+    app: gitea
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: gitea
+  namespace: ac-agentic
+  labels:
+    app: gitea
+    component: git-server
+  annotations:
+    haproxy.router.openshift.io/timeout: "300s"
+spec:
+  host: gitea-ac-agentic.apps.prod01.fis-cloud.fpt.com
+  to:
+    kind: Service
+    name: gitea
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -1,0 +1,300 @@
+# Routes and Ingress Configuration for Zeus Nexus Enhanced Architecture
+
+---
+# Main API Gateway Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: zeus-api-gateway
+  namespace: ac-agentic
+  labels:
+    app: zeus-api-gateway
+    layer: routing
+spec:
+  host: zeus-nexus.apps.your-cluster.com
+  to:
+    kind: Service
+    name: zeus-master
+  port:
+    targetPort: 8000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+# Individual Agent Routes for Direct Access (if needed)
+
+# Athena Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: athena-agent
+  namespace: ac-agentic
+  labels:
+    app: athena
+    layer: satellite-agents
+spec:
+  host: athena.zeus-nexus.apps.your-cluster.com
+  to:
+    kind: Service
+    name: athena
+  port:
+    targetPort: 8001
+  tls:
+    termination: edge
+
+---
+# Hephaestus Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hephaestus-agent
+  namespace: ac-agentic
+  labels:
+    app: hephaestus
+    layer: satellite-agents
+spec:
+  host: hephaestus.zeus-nexus.apps.your-cluster.com
+  to:
+    kind: Service
+    name: hephaestus
+  port:
+    targetPort: 8002
+  tls:
+    termination: edge
+
+---
+# Apollo Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: apollo-agent
+  namespace: ac-agentic
+  labels:
+    app: apollo
+    layer: satellite-agents
+spec:
+  host: apollo.zeus-nexus.apps.your-cluster.com
+  to:
+    kind: Service
+    name: apollo
+  port:
+    targetPort: 8003
+  tls:
+    termination: edge
+
+---
+# LLM Pool Route (for monitoring/admin)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: llm-pool
+  namespace: ac-agentic
+  labels:
+    app: llm-pool
+    layer: llm-pool
+spec:
+  host: llm-pool.zeus-nexus.apps.your-cluster.com
+  to:
+    kind: Service
+    name: llm-pool
+  port:
+    targetPort: 8000
+  tls:
+    termination: edge
+
+---
+# Network Policies for Security
+
+# Default Deny All
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ac-agentic
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Allow Zeus Master to communicate with all agents
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zeus-master-access
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      layer: orchestrator
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: satellite-agents
+    ports:
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 8002
+    - protocol: TCP
+      port: 8003
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: llm-pool
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: memory-storage
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 5432
+
+---
+# Allow agents to communicate with ToolHub services and LLM Pool
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agents-toolhub-access
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      layer: satellite-agents
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: toolhub-services
+    ports:
+    - protocol: TCP
+      port: 8002
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: llm-pool
+    ports:
+    - protocol: TCP
+      port: 8000
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: memory-storage
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 6333
+
+---
+# Allow ToolHub services to access external APIs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: toolhub-external-access
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      layer: toolhub-services
+  policyTypes:
+  - Egress
+  egress:
+  - {} # Allow all external egress for API calls
+
+---
+# Allow LLM Pool to access external APIs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-pool-external-access
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      layer: llm-pool
+  policyTypes:
+  - Egress
+  egress:
+  - {} # Allow all external egress for LLM API calls
+  - to:
+    - podSelector:
+        matchLabels:
+          layer: memory-storage
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# Allow ingress to Zeus Master from routes
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zeus-master-ingress
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      app: zeus-master
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: []  # Allow all ingress (will be controlled by route)
+    ports:
+    - protocol: TCP
+      port: 8000
+
+---
+# Allow direct access to agents (if needed)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agents-direct-ingress
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      layer: satellite-agents
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: []  # Allow all ingress (will be controlled by route)
+    ports:
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 8002
+    - protocol: TCP
+      port: 8003
+
+---
+# Allow access to LLM Pool for monitoring
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-pool-ingress
+  namespace: ac-agentic
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-pool
+  policyTypes:
+  - Ingress
+  ingress:
+  - from: []  # Allow all ingress (will be controlled by route)
+    ports:
+    - protocol: TCP
+      port: 8000

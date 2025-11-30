@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zeus-nexus-agentic
+  namespace: openshift-gitops
+  labels:
+    app: zeus-nexus
+    environment: production
+spec:
+  project: default
+  source:
+    repoURL: 'https://gitlab.fiscloud.ai/frankenstein/zeus-nexus.git'
+    targetRevision: main
+    path: manifests
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: ac-agentic
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+  revisionHistoryLimit: 3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: zeus-nexus-project
+  namespace: openshift-gitops
+spec:
+  description: "Zeus Nexus AI Pantheon Project"
+  
+  # Source repositories
+  sourceRepos:
+  - 'https://gitlab.fiscloud.ai/frankenstein/zeus-nexus.git'
+  - 'https://github.com/argoproj/argocd-example-apps.git'
+  
+  # Destination clusters and namespaces
+  destinations:
+  - namespace: ac-agentic
+    server: https://kubernetes.default.svc
+  - namespace: openshift-gitops
+    server: https://kubernetes.default.svc
+  
+  # Cluster resource whitelist
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: '*'
+  - group: apps
+    kind: '*'
+  - group: route.openshift.io
+    kind: '*'
+  - group: monitoring.coreos.com
+    kind: '*'
+  
+  roles:
+  - name: admin
+    description: Admin privileges for Zeus Nexus
+    policies:
+    - p, proj:zeus-nexus-project:admin, applications, *, zeus-nexus-project/*, allow
+    - p, proj:zeus-nexus-project:admin, repositories, *, *, allow
+    groups:
+    - cluster-admin
+    - system:admin

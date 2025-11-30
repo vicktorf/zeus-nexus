@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: zeus-agents
-  namespace: argocd
+  namespace: ac-agentic
   labels:
     app: zeus-agents
 spec:
@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       name: 'zeus-agent-{{name}}'
-      namespace: argocd
+      namespace: ac-agentic
       labels:
         app: 'zeus-agent-{{name}}'
         component: agent

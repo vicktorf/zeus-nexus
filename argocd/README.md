@@ -13,19 +13,27 @@ Zeus Nexus uses ArgoCD for GitOps-based deployment with the following structure:
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   GitHub Repo   │────│   ArgoCD Apps    │────│  OpenShift      │
-│                 │    │                  │    │                 │
-│ vicktorf/       │    │ ┌──────────────┐ │    │ ┌─────────────┐ │
-│ zeus-nexus      │────│ │Infrastructure│ │────│ │Redis/Postgres│ │
-│                 │    │ └──────────────┘ │    │ │MinIO        │ │
-│ ├── manifests/  │    │ ┌──────────────┐ │    │ └─────────────┘ │
-│ ├── argocd/     │────│ │  Zeus Core   │ │────│ ┌─────────────┐ │
-│ └── agents/     │    │ └──────────────┘ │    │ │Zeus API     │ │
-│                 │    │ ┌──────────────┐ │    │ │Web Interface│ │
-└─────────────────┘    │ │ Agent Set    │ │────│ │Agents       │ │
-                       │ └──────────────┘ │    │ └─────────────┘ │
-                       └──────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌──────────────────────────────────────────────┐
+│   GitHub Repo   │────│           ac-agentic Namespace              │
+│                 │    │                                              │
+│ vicktorf/       │    │ ┌──────────────┐  ┌─────────────────────────┐ │
+│ zeus-nexus      │────│ │   ArgoCD     │──│     Zeus Nexus          │ │
+│                 │    │ │   Server     │  │                         │ │
+│ ├── manifests/  │    │ └──────────────┘  │ ┌─────────────────────┐ │ │
+│ ├── argocd/     │────│         │         │ │Infrastructure       │ │ │
+│ └── agents/     │    │         │         │ │Redis/Postgres/MinIO │ │ │
+│                 │    │         ▼         │ └─────────────────────┘ │ │
+└─────────────────┘    │ ┌──────────────┐  │ ┌─────────────────────┐ │ │
+                       │ │Applications  │──│ │Zeus Core API        │ │ │
+                       │ │- Infrastructure│  │ │Web Interface        │ │ │
+                       │ │- Zeus Core   │  │ │LLM Pool             │ │ │
+                       │ │- Agent Set   │  │ └─────────────────────┘ │ │
+                       │ └──────────────┘  │ ┌─────────────────────┐ │ │
+                       │                   │ │AI Agents            │ │ │
+                       │                   │ │Athena/Apollo/Heph.  │ │ │
+                       │                   │ └─────────────────────┘ │ │
+                       │                   └─────────────────────────┘ │
+                       └──────────────────────────────────────────────┘
 ```
 
 ## Deployment Strategy
@@ -51,8 +59,8 @@ Applications are deployed in order using sync waves:
    ```
 
 2. **Access ArgoCD UI:**
-   - Get URL: `oc get route argocd-server -n argocd`
-   - Get password: `oc get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d`
+   - Get URL: `oc get route argocd-server -n ac-agentic`
+   - Get password: `oc get secret argocd-initial-admin-secret -n ac-agentic -o jsonpath='{.data.password}' | base64 -d`
 
 3. **Monitor deployment:**
    - Login to ArgoCD with admin/password
@@ -98,10 +106,11 @@ argocd app refresh zeus-nexus --hard
 - **zeus-agents**: AI agents using ApplicationSet
 
 ### Security
-- Namespace isolation (ac-agentic)
+- Single namespace deployment (ac-agentic)
 - RBAC with project-scoped permissions
 - Resource whitelisting
 - Sync window controls
+- Shared security context with Zeus Nexus
 
 ## Troubleshooting
 

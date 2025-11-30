@@ -5,7 +5,7 @@
 
 set -e
 
-NAMESPACE="argocd"
+NAMESPACE="ac-agentic"
 ZEUS_NAMESPACE="ac-agentic"
 ARGO_VERSION="v2.9.3"
 
@@ -29,20 +29,28 @@ fi
 
 echo "✅ Prerequisites check passed"
 
-# Create ArgoCD namespace if it doesn't exist
-echo "📦 Creating ArgoCD namespace..."
-oc new-project $NAMESPACE 2>/dev/null || oc project $NAMESPACE
+# Use existing ac-agentic namespace
+echo "📦 Using existing namespace: $NAMESPACE"
+oc project $NAMESPACE 2>/dev/null || {
+    echo "Creating namespace: $NAMESPACE"
+    oc new-project $NAMESPACE --description="Zeus Nexus AI Pantheon with ArgoCD" --display-name="AC Agentic AI Platform"
+}
 
 # Install ArgoCD
 echo "🔧 Installing ArgoCD..."
 if ! oc get deployment argocd-server -n $NAMESPACE >/dev/null 2>&1; then
-    echo "Installing ArgoCD $ARGO_VERSION..."
+    echo "Installing ArgoCD $ARGO_VERSION in namespace $NAMESPACE..."
+    
+    # Apply namespace first
+    oc apply -f argocd/argocd-install.yaml
+    
+    # Install ArgoCD manifests
     oc apply -n $NAMESPACE -f https://raw.githubusercontent.com/argoproj/argo-cd/$ARGO_VERSION/manifests/install.yaml
     
     echo "⏳ Waiting for ArgoCD to be ready..."
-    oc wait --for=condition=Available --timeout=300s deployment/argocd-server -n $NAMESPACE
-    oc wait --for=condition=Available --timeout=300s deployment/argocd-application-controller -n $NAMESPACE
-    oc wait --for=condition=Available --timeout=300s deployment/argocd-repo-server -n $NAMESPACE
+    oc wait --for=condition=Available --timeout=600s deployment/argocd-server -n $NAMESPACE
+    oc wait --for=condition=Available --timeout=600s deployment/argocd-application-controller -n $NAMESPACE
+    oc wait --for=condition=Available --timeout=600s deployment/argocd-repo-server -n $NAMESPACE
     
     echo "✅ ArgoCD installed successfully"
 else
@@ -70,13 +78,15 @@ spec:
     name: argocd-server
 EOF
 
+
+
 # Get ArgoCD server URL
-ARGOCD_URL=$(oc get route argocd-server -n $NAMESPACE -o jsonpath='{.spec.host}')
+ARGOCD_URL=$(oc get route argocd-server -n $NAMESPACE -o jsonpath='{.spec.host}' 2>/dev/null || echo "argocd-server-ac-agentic.apps.your-cluster.com")
 echo "🔗 ArgoCD Server URL: https://$ARGOCD_URL"
 
 # Get admin password
 echo "🔑 Getting ArgoCD admin password..."
-ADMIN_PASSWORD=$(oc get secret argocd-initial-admin-secret -n $NAMESPACE -o jsonpath='{.data.password}' | base64 -d)
+ADMIN_PASSWORD=$(oc get secret argocd-initial-admin-secret -n $NAMESPACE -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "Password not available yet")
 echo "👤 Admin username: admin"
 echo "🔐 Admin password: $ADMIN_PASSWORD"
 
@@ -99,6 +109,7 @@ echo "📋 Summary:"
 echo "  - ArgoCD Server: https://$ARGOCD_URL"
 echo "  - Username: admin"
 echo "  - Password: $ADMIN_PASSWORD"
+echo "  - Namespace: $NAMESPACE (shared with Zeus Nexus)"
 echo "  - Project: zeus-nexus-project"
 echo "  - Applications: zeus-nexus, zeus-infrastructure, zeus-agents"
 echo ""
@@ -106,8 +117,14 @@ echo "🎯 Next steps:"
 echo "  1. Login to ArgoCD UI with the credentials above"
 echo "  2. Verify applications are syncing properly"
 echo "  3. Monitor deployment status in ArgoCD dashboard"
-echo "  4. Access Zeus Nexus at: https://zeus-dashboard-ac-agentic.apps.your-cluster.com"
+echo "  4. Access Zeus Nexus services in the same namespace"
 echo ""
 echo "🔧 To sync applications manually:"
-echo "  argocd app sync zeus-infrastructure"
-echo "  argocd app sync zeus-nexus"
+echo "  argocd app sync zeus-infrastructure --server https://$ARGOCD_URL"
+echo "  argocd app sync zeus-nexus --server https://$ARGOCD_URL"
+echo ""
+echo "📊 All services in namespace: $NAMESPACE"
+echo "  - ArgoCD: GitOps management"
+echo "  - Zeus Core: AI orchestration"  
+echo "  - Infrastructure: Redis, PostgreSQL, MinIO"
+echo "  - Agents: Athena, Apollo, Hephaestus"

@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: zeus-nexus
-  namespace: argocd
+  namespace: ac-agentic
   labels:
     app: zeus-nexus
     environment: production
@@ -47,7 +47,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: zeus-infrastructure
-  namespace: argocd
+  namespace: ac-agentic
   labels:
     app: zeus-infrastructure
     environment: production

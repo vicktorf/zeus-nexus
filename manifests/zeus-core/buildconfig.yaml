@@ -14,7 +14,7 @@ spec:
   source:
     type: Git
     git:
-      uri: 'https://gitlab.fiscloud.ai/frankenstein/zeus-nexus.git'
+      uri: 'https://github.com/dungpv30/zeus-nexus.git'
       ref: main
     contextDir: docker
   strategy:

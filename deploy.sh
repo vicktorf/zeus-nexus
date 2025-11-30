@@ -191,6 +191,22 @@ cleanup() {
     fi
 }
 
+# ArgoCD deployment function
+deploy_argocd() {
+    log_info "Setting up ArgoCD for Zeus Nexus..."
+    
+    if [ ! -f "./setup-argocd.sh" ]; then
+        log_error "ArgoCD setup script not found"
+        exit 1
+    fi
+    
+    bash ./setup-argocd.sh
+    
+    log_success "ArgoCD setup completed"
+    log_info "Zeus Nexus will be deployed via GitOps"
+    log_info "Monitor deployment at ArgoCD UI"
+}
+
 # Main execution
 case "${1:-deploy}" in
     "deploy")
@@ -204,6 +220,12 @@ case "${1:-deploy}" in
         show_endpoints
         log_success "🎉 Zeus Nexus deployment completed successfully!"
         ;;
+    "argocd")
+        log_info "Starting Zeus Nexus ArgoCD deployment..."
+        check_oc_login
+        deploy_argocd
+        log_success "🎉 Zeus Nexus ArgoCD setup completed successfully!"
+        ;;
     "cleanup")
         cleanup
         ;;
@@ -214,10 +236,11 @@ case "${1:-deploy}" in
         show_endpoints
         ;;
     *)
-        echo "Usage: $0 {deploy|cleanup|verify|endpoints}"
+        echo "Usage: $0 {deploy|argocd|cleanup|verify|endpoints}"
         echo ""
         echo "Commands:"
-        echo "  deploy    - Deploy complete Zeus Nexus stack"
+        echo "  deploy    - Deploy complete Zeus Nexus stack (direct)"
+        echo "  argocd    - Setup ArgoCD and deploy via GitOps"
         echo "  cleanup   - Remove entire deployment"
         echo "  verify    - Verify current deployment status"
         echo "  endpoints - Show service endpoints"

@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: zeus-agents
+  namespace: argocd
+  labels:
+    app: zeus-agents
+spec:
+  generators:
+    - list:
+        elements:
+          - name: athena
+            path: agents/athena
+            namespace: ac-agentic
+          # Future agents can be added here
+          # - name: apollo
+          #   path: agents/apollo
+          #   namespace: ac-agentic
+          # - name: hephaestus
+          #   path: agents/hephaestus
+          #   namespace: ac-agentic
+  template:
+    metadata:
+      name: 'zeus-agent-{{name}}'
+      namespace: argocd
+      labels:
+        app: 'zeus-agent-{{name}}'
+        component: agent
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: zeus-nexus-project
+      source:
+        repoURL: https://github.com/vicktorf/zeus-nexus.git
+        targetRevision: HEAD
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=false
+          - PrunePropagationPolicy=foreground
+        retry:
+          limit: 3
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 1m
+      revisionHistoryLimit: 3

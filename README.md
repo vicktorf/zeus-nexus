@@ -24,6 +24,19 @@
 
 ## 🚀 Quick Start
 
+### Option 1: Direct Deployment
+```bash
+# Deploy complete Zeus Nexus stack
+./deploy.sh deploy
+```
+
+### Option 2: GitOps with ArgoCD (Recommended)
+```bash
+# Setup ArgoCD and deploy via GitOps
+./deploy.sh argocd
+```
+
+### Manual Steps
 1. **Setup OpenShift Project**:
    ```bash
    oc new-project ac-agentic
@@ -43,7 +56,7 @@
 
 4. **Setup GitOps with ArgoCD**:
    ```bash
-   oc apply -f argo-app.yaml
+   oc apply -f argocd/
    ```
 
 ## 📁 Repository Structure

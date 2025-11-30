@@ -1,0 +1,82 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: zeus-nexus-project
+  namespace: argocd
+  labels:
+    project: zeus-nexus
+spec:
+  description: "Zeus Nexus AI Pantheon Project for ArgoCD"
+  sourceRepos:
+    - 'https://github.com/vicktorf/zeus-nexus.git'
+  destinations:
+    - namespace: ac-agentic
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+    - group: 'security.openshift.io'
+      kind: SecurityContextConstraints
+    - group: 'route.openshift.io'
+      kind: Route
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ServiceAccount
+    - group: 'apps'
+      kind: Deployment
+    - group: 'apps'
+      kind: StatefulSet
+    - group: 'build.openshift.io'
+      kind: BuildConfig
+    - group: 'image.openshift.io'
+      kind: ImageStream
+    - group: 'rbac.authorization.k8s.io'
+      kind: Role
+    - group: 'rbac.authorization.k8s.io'
+      kind: RoleBinding
+    - group: ''
+      kind: PersistentVolumeClaim
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: zeus-admin
+      description: "Admin role for Zeus Nexus project"
+      policies:
+        - p, proj:zeus-nexus-project:zeus-admin, applications, *, zeus-nexus-project/*, allow
+        - p, proj:zeus-nexus-project:zeus-admin, repositories, *, *, allow
+        - p, proj:zeus-nexus-project:zeus-admin, clusters, *, *, allow
+      groups:
+        - zeus-admins
+    - name: zeus-developer  
+      description: "Developer role for Zeus Nexus project"
+      policies:
+        - p, proj:zeus-nexus-project:zeus-developer, applications, get, zeus-nexus-project/*, allow
+        - p, proj:zeus-nexus-project:zeus-developer, applications, sync, zeus-nexus-project/*, allow
+        - p, proj:zeus-nexus-project:zeus-developer, repositories, get, *, allow
+      groups:
+        - zeus-developers
+  syncWindows:
+    - kind: allow
+      schedule: '* * * * *'
+      duration: 1h
+      applications:
+        - '*'
+      manualSync: true
+    - kind: deny
+      schedule: '0 2 * * *'
+      duration: 2h
+      applications:
+        - 'zeus-infrastructure'
+      manualSync: false
